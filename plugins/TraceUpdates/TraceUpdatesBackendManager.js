@@ -23,7 +23,7 @@ import type {
   Presenter,
 } from './TraceUpdatesTypes';
 
-import type {ControlState} from '../../frontend/types.js';
+import type { ControlState } from '../../frontend/types.js';
 
 const NODE_TYPE_COMPOSITE = 'Composite';
 
@@ -38,16 +38,22 @@ class TraceUpdatesBackendManager {
 
     var useDOM = agent.capabilities.dom;
 
-    this._measurer = useDOM ?
-      new TraceUpdatesWebNodeMeasurer() :
-      new TraceUpdatesAbstractNodeMeasurer();
+    this.counters = {};
+    this.updateConsole = true;
 
-    this._presenter = useDOM ?
-      new TraceUpdatesWebNodePresenter() :
-      new TraceUpdatesAbstractNodePresenter();
+    this._measurer = useDOM
+      ? new TraceUpdatesWebNodeMeasurer()
+      : new TraceUpdatesAbstractNodeMeasurer();
+
+    this._presenter = useDOM
+      ? new TraceUpdatesWebNodePresenter()
+      : new TraceUpdatesAbstractNodePresenter();
 
     this._isActive = false;
-    agent.on('traceupdatesstatechange', this._onTraceUpdatesStateChange.bind(this));
+    agent.on(
+      'traceupdatesstatechange',
+      this._onTraceUpdatesStateChange.bind(this)
+    );
     agent.on('update', this._onUpdate.bind(this, agent));
     agent.on('shutdown', this._shutdown.bind(this));
   }
@@ -60,6 +66,20 @@ class TraceUpdatesBackendManager {
       obj.nodeType !== NODE_TYPE_COMPOSITE
     ) {
       return;
+    }
+
+    this.counters[obj.name] = ~~this.counters[obj.name] + 1;
+
+    if (this.updateConsole) {
+      this.updateConsole = false;
+      console.clear();
+      console.log('Re-render count');
+
+      Object.keys(this.counters)
+        .sort((a, b) => this.counters[b] - this.counters[a])
+        .map(key => console.log(key, this.counters[key]));
+
+      setTimeout(() => (this.updateConsole = true), 1000);
     }
 
     var node = agent.getNodeForID(obj.id);
